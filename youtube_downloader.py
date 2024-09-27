@@ -2,6 +2,14 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 import yt_dlp
 import os
+import re
+
+# Função para validar URL
+def validar_url(url):
+    youtube_regex = re.compile(
+        r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/'
+        r'(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})')
+    return youtube_regex.match(url)
 
 def download_video(url, save_path):
     ydl_opts = {
@@ -19,8 +27,10 @@ def download_video(url, save_path):
 
 def start_download():
     url = url_entry.get("1.0", tk.END).strip()
-    if not url:
-        messagebox.showwarning("Entrada inválida", "Por favor, insira uma URL.")
+
+    # Validação de URL
+    if not url or not validar_url(url):
+        messagebox.showwarning("Entrada inválida", "Por favor, insira uma URL válida do YouTube.")
         return
 
     save_path = filedialog.askdirectory(title="Escolha o diretório para salvar")
