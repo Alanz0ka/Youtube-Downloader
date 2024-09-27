@@ -50,14 +50,14 @@ def start_download():
     if not save_path:
         return
 
-    audio_format = format_combobox.get() 
-    audio_quality = quality_combobox.get() if audio_format == "mp3" else "192" 
+    audio_format = format_combobox.get()  # Obter formato selecionado
+    audio_quality = quality_combobox.get() if audio_format == "mp3" else "192"  
 
-    # Criar e iniciar uma thread para o download
+    
     status_label.config(text="Iniciando download...")
     threading.Thread(target=download_video_thread, args=(url, save_path, audio_quality, audio_format)).start()
 
-
+# Função que executa o download em uma thread
 def download_video_thread(url, save_path, audio_quality, audio_format):
     try:
         download_video(url, save_path, audio_quality, audio_format, status_label)
@@ -82,18 +82,18 @@ url_entry.pack()
 format_label = tk.Label(root, text="Escolha o formato do arquivo:")
 format_label.pack()
 
-formats = ["mp3", "wav"]  # Formatos disponíveis
+formats = ["mp3", "wav"]  
 format_combobox = ttk.Combobox(root, values=formats)
-format_combobox.set("mp3")  # Definir padrão
+format_combobox.set("mp3")  
 format_combobox.pack()
 
 # Combobox para seleção de qualidade de áudio (visível apenas se mp3 for selecionado)
 quality_label = tk.Label(root, text="Escolha a qualidade do áudio:")
 quality_label.pack()
 
-qualities = ["128", "192", "256", "320"]  # Qualidades disponíveis em kbps
+qualities = ["128", "192", "256", "320"]  
 quality_combobox = ttk.Combobox(root, values=qualities)
-quality_combobox.set("192")  # Definir padrão
+quality_combobox.set("320") 
 quality_combobox.pack()
 
 # Função para mostrar/ocultar a seleção de qualidade
@@ -105,7 +105,7 @@ def toggle_quality_visibility(event):
         quality_label.pack_forget()
         quality_combobox.pack_forget()
 
-# Bind do evento de alteração de seleção do formato
+
 format_combobox.bind("<<ComboboxSelected>>", toggle_quality_visibility)
 
 download_button = tk.Button(root, text="Baixar e Converter", command=start_download)
