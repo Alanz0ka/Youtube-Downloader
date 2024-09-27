@@ -5,7 +5,11 @@ import os
 import re
 import threading
 
+# Criação de um semáforo para limitar downloads simultâneos
+max_simultaneous_downloads = 10
+download_semaphore = threading.Semaphore(max_simultaneous_downloads)
 
+# Função para validar URL
 def validar_url(url):
     youtube_video_regex = re.compile(
         r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/'
@@ -14,24 +18,43 @@ def validar_url(url):
         r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(playlist\?list=|.+/p/)?([a-zA-Z0-9_-]+)')
     return youtube_video_regex.match(url) or youtube_playlist_regex.match(url)
 
-
+# Função para download
 def download_video(url, save_path, audio_quality, audio_format, status_label):
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': os.path.join(save_path, '%(title)s.%(ext)s'),
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': audio_format,  
-            'preferredquality': audio_quality,  
-        }],
-        'progress_hooks': [lambda d: update_status(d, status_label)],
-        'noprogress': True
-    }
+    with download_semaphore:
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(save_path, '%(title)s.%(ext)s'),
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': audio_format,
+                'preferredquality': audio_quality,
+            }],
+            'progress_hooks': [lambda d: update_status(d, status_label)],
+            'noprogress': True
+        }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
 
+# Função para baixar vídeos de uma playlist
+def download_playlist(url, save_path, audio_quality, audio_format, status_label):
+    with download_semaphore:
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(save_path, '%(title)s.%(ext)s'),
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': audio_format,
+                'preferredquality': audio_quality,
+            }],
+            'progress_hooks': [lambda d: update_status(d, status_label)],
+            'noprogress': True
+        }
 
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+# Função para atualizar o texto de status
 def update_status(d, status_label):
     if d['status'] == 'downloading':
         status_label.config(text="Baixando...")
@@ -51,11 +74,34 @@ def start_download():
         return
 
     audio_format = format_combobox.get()  # Obter formato selecionado
-    audio_quality = quality_combobox.get() if audio_format == "mp3" else "192"  
+    audio_quality = quality_combobox.get() if audio_format == "mp3" else "192"  # Definir qualidade se MP3
 
-    
+    # Adicionar a URL na lista de downloads em andamento
+    downloads_list.insert(tk.END, url)
+
+    # Criar e iniciar uma thread para o download
     status_label.config(text="Iniciando download...")
-    threading.Thread(target=download_video_thread, args=(url, save_path, audio_quality, audio_format)).start()
+    
+    # Verificar se a URL é uma playlist ou um vídeo
+    if "playlist" in url:
+        threading.Thread(target=download_playlist_thread, args=(url, save_path, audio_quality, audio_format)).start()
+    else:
+        threading.Thread(target=download_video_thread, args=(url, save_path, audio_quality, audio_format)).start()
+
+    # Limpar campos de entrada
+    url_entry.delete("1.0", tk.END)
+    format_combobox.set("mp3")  # Resetar para o formato padrão
+    quality_combobox.set("192")  # Resetar para a qualidade padrão
+
+# Função que executa o download de uma playlist em uma thread
+def download_playlist_thread(url, save_path, audio_quality, audio_format):
+    try:
+        download_playlist(url, save_path, audio_quality, audio_format, status_label)
+        messagebox.showinfo("Sucesso", "Todos os downloads da playlist foram concluídos com sucesso!")
+        status_label.config(text="Pronto!")
+    except Exception as e:
+        messagebox.showerror("Erro", str(e))
+        status_label.config(text="Erro durante o download!")
 
 # Função que executa o download em uma thread
 def download_video_thread(url, save_path, audio_quality, audio_format):
@@ -82,18 +128,18 @@ url_entry.pack()
 format_label = tk.Label(root, text="Escolha o formato do arquivo:")
 format_label.pack()
 
-formats = ["mp3", "wav"]  
+formats = ["mp3", "wav"]  # Formatos disponíveis
 format_combobox = ttk.Combobox(root, values=formats)
-format_combobox.set("mp3")  
+format_combobox.set("mp3")  # Definir padrão
 format_combobox.pack()
 
 # Combobox para seleção de qualidade de áudio (visível apenas se mp3 for selecionado)
 quality_label = tk.Label(root, text="Escolha a qualidade do áudio:")
 quality_label.pack()
 
-qualities = ["128", "192", "256", "320"]  
+qualities = ["128", "192", "256", "320"]  # Qualidades disponíveis em kbps
 quality_combobox = ttk.Combobox(root, values=qualities)
-quality_combobox.set("320") 
+quality_combobox.set("192")  # Definir padrão
 quality_combobox.pack()
 
 # Função para mostrar/ocultar a seleção de qualidade
@@ -105,7 +151,7 @@ def toggle_quality_visibility(event):
         quality_label.pack_forget()
         quality_combobox.pack_forget()
 
-
+# Bind do evento de alteração de seleção do formato
 format_combobox.bind("<<ComboboxSelected>>", toggle_quality_visibility)
 
 download_button = tk.Button(root, text="Baixar e Converter", command=start_download)
@@ -114,5 +160,12 @@ download_button.pack()
 # Label para exibir o status do download
 status_label = tk.Label(root, text="", font=("Helvetica", 12))
 status_label.pack(pady=10)
+
+# Lista para exibir downloads em andamento
+downloads_label = tk.Label(root, text="Downloads em andamento:")
+downloads_label.pack()
+
+downloads_list = tk.Listbox(root, width=60)
+downloads_list.pack()
 
 root.mainloop()
