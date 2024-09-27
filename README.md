@@ -51,7 +51,7 @@ Lembre-se de, após adicionar o ffmpeg ao PATH, reiniciar a máquina; caso contr
    Navegue até o diretório do projeto e execute o script:
 
    ```bash
-   python youtube_downloader.py
+   python main.py
    ```
 
 5. **Interface Gráfica**:
