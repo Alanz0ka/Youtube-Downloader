@@ -30,7 +30,9 @@ Lembre-se de, após adicionar o ffmpeg ao PATH, reiniciar a máquina; caso contr
    ```bash
    pip install virtualenv
    virtualenv venv
-   source venv/bin/activate  # No Windows, use: venv\Scripts\activate
+   source venv/bin/activate  
+   # No Windows, use: 
+   venv/Scripts/activate
    ```
 
 2. **Instalar Dependências**:
